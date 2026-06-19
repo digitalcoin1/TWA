@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TWA - Talk With Anyone</title>
+    <style>
+        body { margin: 0; padding: 0; background-color: #121214; color: #e1e1e6; font-family: sans-serif; display: flex; height: 100vh; }
+        #sidebar { width: 280px; background-color: #1a1a1e; border-right: 1px solid #29292e; display: flex; flex-direction: column; }
+        .sidebar-header { padding: 20px; border-bottom: 1px solid #29292e; }
+        #channels-list { flex: 1; overflow-y: auto; padding: 15px; }
+        .zone-container { margin-bottom: 10px; }
+        .zone-header { width: 100%; background-color: #202024; border: 1px solid #29292e; color: #e1e1e6; padding: 12px; font-weight: bold; text-align: left; border-radius: 6px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem; }
+        .zone-arrow { transition: transform 0.2s; display: inline-block; }
+        .zone-container.open .zone-arrow { transform: rotate(90deg); }
+        .zone-channels { display: none; padding-left: 10px; margin-top: 5px; }
+        .zone-container.open .zone-channels { display: block; }
+        .channel-btn { display: flex; justify-content: space-between; align-items: center; width: 100%; background: none; border: none; color: #a8a8b3; padding: 8px 10px; border-radius: 4px; cursor: pointer; }
+        .channel-btn.active { background-color: #00b37e; color: #fff; font-weight: bold; }
+        #chat-container { flex: 1; display: flex; flex-direction: column; padding: 20px; }
+        #messages { flex: 1; background-color: #18181c; border: 1px solid #29292e; border-radius: 6px; padding: 15px; overflow-y: auto; margin-bottom: 15px; }
+        #input-area { display: flex; gap: 10px; }
+        input { flex: 1; background-color: #202024; border: 1px solid #29292e; border-radius: 4px; padding: 12px; color: #fff; }
+        button { background-color: #00b37e; color: #fff; border: none; border-radius: 4px; padding: 0 20px; cursor: pointer; }
+        .notification-dot { width: 8px; height: 8px; background-color: #f75a68; border-radius: 50%; display: inline-block; }
+    </style>
+</head>
+<body>
+    <div id="sidebar">
+        <div class="sidebar-header">
+            <h3 style="margin:0;">🌐 TWA Dashboard</h3>
+            <p id="current-room-display" style="margin: 5px 0 0 0; color: #00b37e; font-size: 0.9rem;">Room: Channel 1</p>
+        </div>
+        <div id="channels-list"></div>
+    </div>
+    <div id="chat-container">
+        <h2 id="chat-header"># Channel 1</h2>
+        <div id="messages"></div>
+        <div id="input-area">
+            <input type="text" placeholder="Type a message...">
+            <button id="send-btn">Send</button>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        let currentChannel = "Channel 1";
+        const messagesContainer = document.querySelector('#messages');
+
+        // Render Sidebar Logic
+        const zones = [
+            { id: "zone1", name: "🌐 Zone 1 (Ch 1-16)", start: 1, end: 16 },
+            { id: "zone2", name: "🌐 Zone 2 (Ch 17-32)", start: 17, end: 32 },
+            { id: "zone3", name: "🌐 Zone 3 (Ch 33-48)", start: 33, end: 48 }
+        ];
+
+        zones.forEach(zone => {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'zone-container';
+            wrapper.innerHTML = `<button class="zone-header"><span>${zone.name}</span><span class="zone-arrow">▶</span></button>`;
+            const panel = document.createElement('div');
+            panel.className = 'zone-channels';
+            for (let i = zone.start; i <= zone.end; i++) {
+                const btn = document.createElement('button');
+                btn.className = `channel-btn ${i === 1 ? 'active' : ''}`;
+                btn.id = `btn-Channel-${i}`;
+                btn.innerHTML = `<span># Channel ${i}</span><span class="count-badge"></span>`;
+                btn.onclick = () => switchRoom(`Channel ${i}`, btn);
+                panel.appendChild(btn);
+            }
+            wrapper.appendChild(panel);
+            document.getElementById('channels-list').appendChild(wrapper);
+            wrapper.querySelector('.zone-header').onclick = () => wrapper.classList.toggle('open');
+        });
+
+        function switchRoom(newChannel, btn) {
+            if (newChannel === currentChannel) return;
+            currentChannel = newChannel;
+            document.querySelectorAll('.channel-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById('chat-header').textContent = `# ${newChannel}`;
+            messagesContainer.innerHTML = '';
+            socket.emit('join room', newChannel);
+        }
+
+        document.getElementById('send-btn').onclick = () => {
+            const input = document.querySelector('input');
+            if (input.value) {
+                socket.emit('chat message', { room: currentChannel, text: input.value });
+                input.value = '';
+            }
+        };
+
+        socket.on('chat message', (data) => {
+            if (data.room === currentChannel) {
+                messagesContainer.innerHTML += `<p><strong>${data.user}:</strong> ${data.text}</p>`;
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            }
+        });
+
+        socket.on('room history', (history) => {
+            history.forEach(data => {
+                messagesContainer.innerHTML += `<p><strong style="color: #a8a8b3">${data.user}:</strong> ${data.text}</p>`;
+            });
+        });
+
+        socket.on('update user count', (data) => {
+            const btn = document.getElementById(`btn-${data.room.replace(' ', '-')}`);
+            if (btn) btn.querySelector('.count-badge').textContent = ` (${data.count})`;
+        });
+    </script>
+</body>
+</html>
