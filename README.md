@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # TWA (Talk With Anyone)
 
 TWA (Talk With Anyone) is an open-source project focused on connecting users worldwide through lightweight, real-time, and privacy-focused chat spaces. 
@@ -36,3 +37,6 @@ To ensure a safe, clean, and welcoming environment for everyone, all users must 
 ## 💻 Getting Started (Local Setup)
 
 *(Instructions coming soon as the codebase develops!)*
+=======
+# TWA
+>>>>>>> 9eda88e697ee616315653d50fbfc7970f89356ed
